@@ -1,6 +1,6 @@
 ---
 title: "Just another way to setup k3s on Proxmox"
-author: "Christian ∆ Benstein"
+author: "Christian ‚àÜ Benstein"
 ---
 
 This repo containers just another way to set up k3s on a Proxmox server in LXC containers using Terraform and Ansible. I have chosen not to use cool modules or automation and rely solely on out-of-the-box options to make this a bit future-proof. 
@@ -33,7 +33,7 @@ This repo consists of 3 parts:
 
 # Usage
 
-You can use the included `Makefile` for quick setup. Follow along to create the cluster step by step. Please allow some time for each step to complete. Setting up the infra can take around 2 minutes, deploying k3s can take around 2–10 minutes (before the cluster is in a ready state).
+You can use the included `Makefile` for quick setup. Follow along to create the cluster step by step. Please allow some time for each step to complete. Setting up the infra can take around 2 minutes, deploying k3s can take around 2√ê10 minutes (before the cluster is in a ready state).
 
 ## Creating the infra
 
