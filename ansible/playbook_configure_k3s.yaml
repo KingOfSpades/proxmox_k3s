@@ -1,0 +1,106 @@
+---
+- hosts: all
+  remote_user: root
+  tags: general
+
+  tasks:
+  - name: |
+      Update the OS. This will take a long time if you are running
+      this for the first time, so be patient and get a cup of coffee, 
+      tea or whiskey
+    ansible.builtin.apt:
+      upgrade: yes
+      update_cache: yes
+      cache_valid_time: 3600
+
+  - name: Install utils that we need
+    ansible.builtin.apt:
+      name: curl
+      state: present
+
+  - name: Adding local rc file to add /dev/kmsg to cluster(
+    ansible.builtin.file:
+      path: /etc/rc.local
+      state: touch
+      mode: u=rw,g=r,o=r,a=x
+  
+  - name: Adding the script to make the DIR and symlink
+    ansible.builtin.copy:
+      dest: /etc/rc.local
+      content: |
+        #!/bin/sh -e
+  
+        # Kubeadm 1.15 needs /dev/kmsg to be there, but it's not in lxc, but we can just use /dev/console instead
+        # see: https://github.com/kubernetes-sigs/kind/issues/662
+        if [ ! -e /dev/kmsg ]; then
+            ln -s /dev/console /dev/kmsg
+        fi
+        
+        # https://medium.com/@kvaps/run-kubernetes-in-lxc-container-f04aa94b6c9c
+        mount --make-rshared /
+    notify:
+      - Restart the LXC Container
+
+  handlers:
+  - name: Restart the LXC Container
+    ansible.builtin.reboot:
+      reboot_timeout: 120
+
+
+- hosts: masters
+  remote_user: root
+  tags: masters
+
+  tasks:
+  - name: Installing k3s in Server mode
+    ansible.builtin.shell:
+      cmd: curl -sfL https://get.k3s.io | sh -
+
+  - name: Getting Node Token
+    ansible.builtin.shell:
+      cmd: cat /var/lib/rancher/k3s/server/node-token
+    register: token
+
+  - name: Cluster token is
+    debug: 
+      var: token.stdout
+
+  - name: Saving token to fact
+    set_fact:
+      token: "{{ token.stdout }}"
+
+  - name: Our master server IP is
+    debug:
+      var: ansible_default_ipv4.address
+
+  - name: Creating a copy of the auto generated kubeconfig
+    ansible.builtin.copy:
+      remote_src: true
+      src: /etc/rancher/k3s/k3s.yaml
+      dest: /etc/rancher/k3s/kubeconfig_custom.yaml
+
+  - name: Update server IP in kubeconfig so we can use it right away
+    ansible.builtin.replace:
+      path: /etc/rancher/k3s/kubeconfig_custom.yaml
+      regexp: '127.0.0.1'
+      replace: "{{ ansible_default_ipv4.address }}"
+
+  - name: Copy the remote kubeconfig to local
+    ansible.builtin.fetch:
+      src: /etc/rancher/k3s/kubeconfig_custom.yaml
+      dest: kubeconfig_k3s.yaml
+      flat: yes
+
+
+- hosts: workers
+  remote_user: root
+  tags: worker
+  vars:
+    master: "https://{{ hostvars['k3s-master01.home'].ansible_host }}:6443"
+    token: "{{ hostvars['k3s-master01.home']['token'] }}"
+
+  tasks:
+  - name: Installing k3s in Worker mode and attaching to {{ master }} with token {{ token }}
+    ansible.builtin.shell: |
+      curl -sfL https://get.k3s.io | K3S_URL={{ master }} K3S_TOKEN={{ token }} sh -
+
