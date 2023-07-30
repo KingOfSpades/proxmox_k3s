@@ -4,10 +4,11 @@
   tags: general
 
   tasks:
-  - name: |
+  - name: >
       Update the OS. This will take a long time if you are running
-      this for the first time, so be patient and get a cup of coffee, 
+      this for the first time, so be patient and get a cup of coffee,
       tea or whiskey
+    tags: update
     ansible.builtin.apt:
       upgrade: yes
       update_cache: yes
@@ -18,7 +19,7 @@
       name: curl
       state: present
 
-  - name: Adding local rc file to add /dev/kmsg to cluster(
+  - name: Adding local rc file to add /dev/kmsg to cluster
     ansible.builtin.file:
       path: /etc/rc.local
       state: touch
